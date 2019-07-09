@@ -49,13 +49,19 @@ object Uberblicket {
         }
       }
       case defPng if (defPng(0)) == "defpng" => {
+        println("writing png")
+        // CL: 100 seemed a bit pixel-y. If we want fatter edges, let's change the stroke directly.
+        val pix = 300
         for (colorDef <- args.tail) {
           val colors = colorDef.split("").map(v => allColors(v.toInt)).toIndexedSeq
-          saveDrawToPng(drawFace(colors, 100, _), s"output/blicketSkin${colorDef}.png")
+          assert(colors.size == 5,"Need to specify 5 color indices, e.g., 01010")
+          saveDrawToPng(drawFace(colors, pix, _), s"output/blicketSkin${colorDef}.png",pix,pix)
         }
       }
+      case other:Any => {
+        println("Unrecognized argument. Try something like 'define 01111' or 'defpng 12211'.")
+      }
     }
-    //saveDrawToPdf(drawMultipleStrips, "output/tmpStrip.pdf")
   }
 
   def saveRandomBlicketToPdf(path: String, 
@@ -77,6 +83,7 @@ object Uberblicket {
     val faceColor = colors(0)
     val circSize = faceSize / 3.5
     val starScale = faceSize*0.3
+    /* CL: Where do these come from?
     val phi = 1.61803398875
     val q = 0.22451398829*starScale
     val r = 0.19098300562*starScale
@@ -84,6 +91,7 @@ object Uberblicket {
     val t = 0.07294901687*starScale
     val v = 0.2360679775*starScale
     val h = ((1-q-(2*s))/2)*starScale
+    */
     val off = (faceSize * 0.05) //stimulus offset
     
     val backgR = new Rectangle2D.Double(0, 0, faceSize, faceSize)
@@ -93,17 +101,42 @@ object Uberblicket {
     //faceComponent((faceR, faceColor), g2)
     
     //Star stimulus for blicket
-    val starR = polyPath(Vector((faceSize/2, off+s), //point A
-    ((faceSize/2)+(v/2), s+h+117), //point F
-    ((faceSize*(0.65))-(off/3), s+h+117), //point B
-    ((faceSize/2)+(1+v)/2+t, s+h+q+119), //point G
-    ((faceSize*(0.65))-r, faceSize*(0.31666)), //point C
-    ((faceSize/2), 27), //point H
-    ((faceSize*(0.35))+r, faceSize*(0.31666)), //point D
-    ((faceSize/2)-(1+v)/2-t, s+h+q+119), //point I
-    ((faceSize*(0.35))+(off/3), s+h+117), //point E
-    ((faceSize/2)-(v/2), s+h+117))) //point J
-    faceComponent((starR, colors(1)), g2)
+    // CL: This kind of star has rotational symmetry but no axis-aligned edges. 
+    val starR = {
+      val oRad = starScale/2.0
+      val iRad = starScale/4.0
+
+      // CL: Somewhat arbitrary; the be general, this would probably have to depend on stroke width.
+      val center = (faceSize/2.0,1.35*oRad)
+
+      val starOuterDeg: IndexedSeq[Double] = (0 to 4).map(v => (0.20*2)*math.Pi*v.toDouble+math.Pi)
+      val starInnerDeg: IndexedSeq[Double]  = starOuterDeg.map(v => v+0.1*2*math.Pi) // offset by half
+      val starOuter = starOuterDeg.map(v => (oRad*math.sin(v)+center._1,oRad*math.cos(v)+center._2))
+      val starInner = starInnerDeg.map(v => (iRad*math.sin(v)+center._1,iRad*math.cos(v)+center._2))
+
+      val starAll = (for(i <- 0 until starOuter.size) yield {
+        IndexedSeq(starOuter(i),starInner(i))
+      }).flatten
+      polyPath(starAll)
+    }
+
+    /*
+    val starR_old = {
+      val oldVec:IndexedSeq[(Double,Double)] = Vector((faceSize/2, off+s), //point A
+      ((faceSize/2)+(v/2), s+h+117), //point F
+      ((faceSize*(0.65))-(off/3), s+h+117), //point B
+      ((faceSize/2)+(1+v)/2+t, s+h+q+119), //point G
+      ((faceSize*(0.65))-r, faceSize*(0.31666)), //point C
+      ((faceSize/2), 27), //point H
+      ((faceSize*(0.35))+r, faceSize*(0.31666)), //point D
+      ((faceSize/2)-(1+v)/2-t, s+h+q+119), //point I
+      ((faceSize*(0.35))+(off/3), s+h+117), //point E
+      ((faceSize/2)-(v/2), s+h+117)) //point J
+      println(s"old star:" + oldVec.mkString(","))
+      polyPath(oldVec)
+    }*/
+    
+    faceComponent((starR, colors(1)),g2)
     
     //Circle stimulus for blicket
     val circleR = new Arc2D.Double(faceSize / 2 - (faceSize*(0.266666)/2), faceSize*(0.68333), faceSize*(0.266666), faceSize*(0.266666), 0, 360, Arc2D.CHORD)
@@ -229,6 +262,7 @@ object Uberblicket {
   }
   
   def saveToPng(pathStr: String, width: Int, height: Int, paintF: (java.awt.Graphics2D) => Unit): Unit = {
+    println("calling saveToPng")
     val document = new Document()
     try {
       val path = java.nio.file.Paths.get(pathStr)
@@ -244,16 +278,14 @@ object Uberblicket {
 	  paintF(g)
 	  ImageIO.write(bimg, "png", new File(pathStr))
 	} catch {
-      case ioe: IOException => System.out.println(ioe)
+      case ioe: IOException => println(ioe)
     } finally {
 	document.close()
 	}
   }
 		   
-	  
-
-
   def saveToPdf(pathStr: String, width: Int, height: Int, paintF: (java.awt.Graphics2D) => Unit): Unit = {
+
     val document = new Document()
     try {
       val path = java.nio.file.Paths.get(pathStr)

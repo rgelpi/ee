@@ -1,3 +1,4 @@
+/*
 import scala.swing.Panel
 import java.awt._
 import java.awt.geom._
@@ -11,7 +12,7 @@ import com.itextpdf.text.pdf.{ PdfWriter } // , DefaultFontMapper }
 /**
  * @author clucas
  */
-object Uberblicket {
+object UberblicketPdf {
 
   val paperSizeInches = (8.5, 11.00) // A4
   val outFaceSize = 2 * 72.0 * 0.98 // inches per 5cm * points per inch * empirical conversion factor (blocks seem slightly smaller than 50mm in practice) 
@@ -231,3 +232,4 @@ object Uberblicket {
   }
 
 }
+*/
